@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<title>Tren Dünyası Sunucusu Harita Sistemleri</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body { margin:0; }
+
+#map {
+  height:100vh;
+  width:100%;
+  background:#f0f0f0;
+}
+
+.leaflet-overlay-pane path,
+.leaflet-pane path {
+  vector-effect: non-scaling-stroke;
+}
+
+.panel {
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:white;
+  padding:10px;
+  z-index:999;
+  width:300px;
+  border-radius:10px;
+  box-shadow:0 2px 12px rgba(0,0,0,.15);
+  font-family:Arial, sans-serif;
+}
+
+.panel input,
+.panel select,
+.panel button {
+  width:100%;
+  margin-bottom:6px;
+}
+
+.row { display:flex; gap:6px; }
+.row > * { flex:1; }
+
+.tab {
+  display:flex;
+  gap:5px;
+  margin-bottom:8px;
+}
+
+.tab button {
+  flex:1;
+  padding:6px;
+  cursor:pointer;
+  border:1px solid #ccc;
+  background:#eee;
+}
+
+.tab button.active {
+  background:#333;
+  color:white;
+}
+
+.station-box {
+  width:28px;
+  height:28px;
+  border:2px solid #111827;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#3f3f46;
+  color:white;
+  border-radius:3px;
+  box-shadow:0 2px 4px rgba(0,0,0,.2);
+  font-size:16px;
+  line-height:1;
+}
+
+.station-box.selected {
+  box-shadow:0 0 0 3px #2563eb, 0 2px 4px rgba(0,0,0,.2);
+}
+
+.bottom-panel {
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  z-index:1000;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.switch {
+  width:60px;
+  height:30px;
+  background:#ccc;
+  border-radius:15px;
+  position:relative;
+  cursor:pointer;
+}
+
+.switch::after {
+  content:"";
+  position:absolute;
+  width:26px;
+  height:26px;
+  background:white;
+  border-radius:50%;
+  top:2px;
+  left:2px;
+  transition:0.2s;
+}
+
+.switch.on { background:#4caf50; }
+.switch.on::after { left:32px; }
+
+.zoom-btn {
+  width:60px;
+  height:30px;
+  border:none;
+  cursor:pointer;
+  border-radius:6px;
+  font-size:18px;
+}
+
+.top-search {
+  position:absolute;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(620px, calc(100vw - 20px));
+  z-index:1200;
+  pointer-events:auto;
+}
+
+.search-box {
+  background:white;
+  border-radius:14px;
+  box-shadow:0 2px 16px rgba(0,0,0,.18);
+  overflow:hidden;
+  border:1px solid #e5e7eb;
+}
+
+.search-input {
+  width:100%;
+  box-sizing:border-box;
+  border:none;
+  outline:none;
+  padding:14px 16px;
+  font-size:15px;
+}
+
+.search-results {
+  max-height:280px;
+  overflow:auto;
+  border-top:1px solid #eee;
+}
+
+.search-item {
+  padding:10px 14px;
+  border-bottom:1px solid #f1f1f1;
+  cursor:pointer;
+}
+
+.search-item:hover {
+  background:#f8fafc;
+}
+
+.search-item .type {
+  font-size:12px;
+  color:#6b7280;
+  margin-top:2px;
+}
+
+.hidden {
+  display:none !important;
+}
+
+.side-card {
+  position:absolute;
+  top:76px;
+  right:10px;
+  width:300px;
+  z-index:1100;
+  background:white;
+  border-radius:14px;
+  box-shadow:0 2px 16px rgba(0,0,0,.18);
+  border:1px solid #e5e7eb;
+  overflow:hidden;
+}
+
+.side-card .header {
+  position:relative;
+  padding:14px 68px 10px 44px;
+  border-bottom:1px solid #eee;
+}
+
+.side-card .close-btn,
+.side-card .back-btn {
+  position:absolute;
+  top:10px;
+  width:26px;
+  height:26px;
+  border:none;
+  border-radius:50%;
+  background:#e5e7eb;
+  color:#111827;
+  cursor:pointer;
+  font-size:16px;
+  line-height:26px;
+  padding:0;
+}
+
+.side-card .back-btn {
+  left:10px;
+}
+
+.side-card .close-btn {
+  right:10px;
+}
+
+.side-card .close-btn:hover,
+.side-card .back-btn:hover {
+  background:#d1d5db;
+}
+
+.side-card .title {
+  font-size:18px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.side-card .meta {
+  font-size:13px;
+  color:#6b7280;
+}
+
+.side-card .body {
+  padding:12px 14px 14px;
+}
+
+.side-card button {
+  width:100%;
+  box-sizing:border-box;
+  padding:11px 12px;
+  border:none;
+  border-radius:10px;
+  background:#111827;
+  color:white;
+  cursor:pointer;
+  margin-top:10px;
+}
+
+.side-card button:hover {
+  filter:brightness(1.05);
+}
+
+.side-card .danger-btn {
+  background:#dc2626;
+}
+
+.side-card .danger-btn:hover {
+  filter:brightness(1.05);
+}
+
+.side-card .secondary-btn {
+  background:#e5e7eb;
+  color:#111827;
+}
+
+.side-card .secondary-btn:hover {
+  background:#d1d5db;
+}
+
+.route-card {
+  position:absolute;
+  top:392px;
+  right:10px;
+  width:300px;
+  z-index:1100;
+  background:white;
+  border-radius:14px;
+  box-shadow:0 2px 16px rgba(0,0,0,.18);
+  border:1px solid #e5e7eb;
+  overflow:hidden;
+}
+
+.route-card .header {
+  padding:14px 14px 10px;
+  border-bottom:1px solid #eee;
+}
+
+.route-card .title {
+  font-size:17px;
+  font-weight:700;
+}
+
+.route-card .body {
+  padding:12px 14px 14px;
+  font-size:14px;
+  color:#111827;
+}
+
+.route-card .hint {
+  color:#6b7280;
+  margin-top:6px;
+  line-height:1.45;
+}
+
+.route-card .start-box {
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#f9fafb;
+  border:1px solid #e5e7eb;
+  font-size:13px;
+  color:#374151;
+}
+
+.route-card .actions {
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+}
+
+.route-card .actions button {
+  flex:1;
+  padding:10px 12px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.route-card .primary {
+  background:#2563eb;
+  color:white;
+}
+
+.route-card .secondary {
+  background:#e5e7eb;
+  color:#111827;
+}
+
+.route-card .primary:disabled {
+  background:#93c5fd;
+  cursor:not-allowed;
+}
+
+.route-note {
+  margin-top:8px;
+  color:#6b7280;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.viewer-badge {
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:1300;
+  background:#111827;
+  color:white;
+  padding:8px 10px;
+  border-radius:999px;
+  font-size:12px;
+  box-shadow:0 2px 12px rgba(0,0,0,.18);
+}
+
+.route-list {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding-bottom:60px;
+}
+
+.train-route-item {
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:10px 10px 8px;
+  background:#f9fafb;
+}
+
+.train-route-item .route-name {
+  font-weight:700;
+  font-size:14px;
+  margin-bottom:4px;
+}
+
+.train-route-item .route-meta {
+  font-size:12px;
+  color:#6b7280;
+  margin-bottom:6px;
+  line-height:1.35;
+}
+
+.train-route-item .route-stations {
+  font-size:12px;
+  color:#111827;
+  line-height:1.4;
+}
+
+.train-route-item .route-actions {
+  display:flex;
+  gap:8px;
+  margin-top:8px;
+}
+
+.train-route-item .route-actions button {
+  margin:0;
+  padding:8px 10px;
+  font-size:12px;
+  border-radius:9px;
+}
+
+.floating-add-btn {
+  position:absolute;
+  right:12px;
+  bottom:12px;
+  width:42px;
+  height:42px;
+  border:none;
+  border-radius:50%;
+  background:#111827;
+  color:white;
+  font-size:24px;
+  line-height:42px;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.25);
+  margin:0 !important;
+  padding:0 !important;
+}
+
+.floating-add-btn:hover {
+  filter:brightness(1.05);
+}
+
+.route-card input,
+.route-card select {
+  width:100%;
+  box-sizing:border-box;
+  margin-top:6px;
+  padding:10px 12px;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  font-size:14px;
+  outline:none;
+}
+
+.route-card input:focus,
+.route-card select:focus {
+  border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37,99,235,.15);
+}
+
+.route-card .selected-stations {
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#f9fafb;
+  border:1px solid #e5e7eb;
+  font-size:13px;
+  color:#374151;
+  line-height:1.45;
+}
+
+.route-card .selected-stations strong {
+  display:block;
+  margin-bottom:4px;
+}
+
+#trainRouteCreatePanel {
+  top:76px;
+  bottom:auto;
+  max-height:calc(100vh - 90px);
+  overflow:auto;
+}
+
+.station-list {
+  margin-top:10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#f9fafb;
+  max-height:220px;
+  overflow:auto;
+  padding:6px;
+}
+
+.station-list-item {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 8px;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+.station-list-item:hover {
+  background:#eef2ff;
+}
+
+.station-list-item input {
+  width:auto;
+  margin:0;
+}
+
+.station-list-item .station-name {
+  font-size:13px;
+  color:#111827;
+  line-height:1.3;
+}
+
+.station-list-item .station-sub {
+  font-size:11px;
+  color:#6b7280;
+  margin-top:1px;
+}
+
+.reset-btn {
+  margin-top:18px !important;
+  background:#dc2626 !important;
+  color:white !important;
+}
+
+.reset-btn:hover {
+  filter:brightness(1.05);
+}
+.local-data-panel {
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  z-index:1400;
+  width:170px;
+  background:white;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  box-shadow:0 2px 16px rgba(0,0,0,.18);
+  overflow:hidden;
+  font-family:Arial, sans-serif;
+}
+
+.local-data-panel .header {
+  padding:12px 14px 10px;
+  border-bottom:1px solid #eee;
+}
+
+.local-data-panel .title {
+  font-size:15px;
+  font-weight:700;
+  color:#111827;
+}
+
+.local-data-panel .body {
+  padding:12px 14px 14px;
+}
+
+.local-data-panel textarea {
+  display:none;
+}
+
+.local-data-panel textarea:focus {
+  border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37,99,235,.15);
+}
+
+.local-data-panel .actions {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+
+.local-data-panel .actions button {
+  width:100%;
+  border:none;
+  border-radius:10px;
+  padding:10px 12px;
+  cursor:pointer;
+  font-size:13px;
+}
+
+.local-data-panel .primary {
+  background:#111827;
+  color:white;
+}
+
+.local-data-panel .secondary {
+  background:#e5e7eb;
+  color:#111827;
+}
+
+.local-data-panel .primary:hover,
+.local-data-panel .secondary:hover {
+  filter:brightness(1.05);
+}
+
+.local-data-panel .file-input {
+  display:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="viewerBadge" class="viewer-badge hidden">Yayınlanmış görünüm</div>
+
+<div id="editorPanel" class="panel">
+  <div class="tab">
+    <button id="tab-place" onclick="setMode('place')">YER</button>
+    <button id="tab-road" onclick="setMode('road')">YOL</button>
+    <button id="tab-boundary" onclick="setMode('boundary')">SINIR</button>
+  </div>
+
+  <input id="name" placeholder="İsim">
+
+  <div class="row">
+    <select id="placeType">
+      <option value="shop">Mağaza</option>
+      <option value="station">Tren İstasyonu</option>
+      <option value="bus_station">Otobüs Durağı</option>
+      <option value="restaurant">Restoran</option>
+      <option value="gas_station">Benzinlik</option>
+      <option value="cafe">Kafe</option>
+      <option value="hospital">Hastane</option>
+      <option value="school">Okul</option>
+      <option value="park">Park</option>
+      <option value="hotel">Otel</option>
+      <option value="pharmacy">Eczane</option>
+      <option value="museum">Müze</option>
+      <option value="ancient_city">Antik Kent</option>
+      <option value="mall">AVM</option>
+      <option value="mosque">Cami</option>
+      <option value="stadium">Stadyum</option>
+      <option value="supermarket">Süpermarket</option>
+      <option value="bank">Banka</option>
+      <option value="library">Kütüphane</option>
+      <option value="government_building">Devlet Binası</option>
+      <option value="police_station">Polis Merkezi</option>
+      <option value="fire_station">İtfaiye</option>
+      <option value="courthouse">Adliye</option>
+      <option value="post_office">Postane</option>
+      <option value="real_estate">Emlak</option>
+      <option value="market">Market/Bakkal</option>
+      <option value="prison">Hapishane</option>
+      <option value="railway_service">Demiryolu Hizmetleri</option>
+      <option value="factory">Fabrika</option>
+      <option value="square">Meydan</option>
+      <option value="tower">Kule</option>
+      <option value="monument">Heykel/Anıt</option>
+    </select>
+
+    <select id="roadType">
+      <option value="street">Sokak</option>
+      <option value="road">Cadde</option>
+      <option value="highway">Şehirler Arası Yol</option>
+      <option value="bicycle">Bisiklet Yolu</option>
+      <option value="railway">Demiryolu</option>
+    </select>
+  </div>
+
+  <select id="direction">
+    <option value="both">Çift Yön</option>
+    <option value="one">Tek Yön</option>
+  </select>
+
+  <button onclick="finish()">Bitir</button>
+  <button onclick="undo()">Geri</button>
+  <button onclick="toggleJunctionBlockerMode()" id="junctionBlockerButton">Kavşak Engelleyici</button>
+  <button onclick="publishMap()">Yayınla</button>
+  <button class="reset-btn" onclick="clearAll()">Sıfırla</button>
+</div>
+
+<div class="top-search">
+  <div class="search-box">
+    <input id="searchInput" class="search-input" placeholder="Ara: yol, yer, istasyon, sınır" autocomplete="off" />
+    <div id="searchResults" class="search-results hidden"></div>
+  </div>
+</div>
+
+<div id="detailsPanel" class="side-card hidden">
+  <div class="header">
+    <button id="detailsBackBtn" class="back-btn hidden" onclick="backFromTrainRoutes()" aria-label="Geri">←</button>
+    <button class="close-btn" onclick="closeDetails()" aria-label="Kapat">×</button>
+    <div id="detailsTitle" class="title"></div>
+    <div id="detailsMeta" class="meta"></div>
+  </div>
+  <div class="body">
+    <div id="detailsBody"></div>
+    <button id="routeButton">Taşıtlar İçin Yol Tarifi</button>
+    <button id="stationRoutesButton">İstasyondan Geçen Trenler</button>
+    <button id="deleteButton" class="danger-btn">Bunu Sil</button>
+    <button id="trainRoutesAddButton" class="floating-add-btn hidden">+</button>
+  </div>
+</div>
+
+<div id="routePanel" class="route-card hidden">
+  <div class="header">
+    <div class="title">Yol tarifi</div>
+  </div>
+  <div class="body">
+    <div id="routeHint" class="hint">Harita üzerinde başlangıç noktasını seçin.</div>
+    <div id="routeStartBox" class="start-box">Başlangıç seçilmedi</div>
+    <div class="actions">
+      <button id="routeConfirmButton" class="primary" disabled>İşaretlediğim noktayı seç</button>
+      <button id="routeCancelButton" class="secondary">İptal</button>
+    </div>
+    <div class="route-note">Rota, en yakın yollara bağlanarak hesaplanır.</div>
+  </div>
+</div>
+
+<div id="trainRouteCreatePanel" class="route-card hidden">
+  <div class="header">
+    <div class="title">Yeni tren rotası</div>
+  </div>
+  <div class="body">
+    <label for="trainRouteName">Tren Rotası Adı</label>
+    <input id="trainRouteName" placeholder="Örn: Marmaray" />
+
+    <label for="trainRouteType" style="display:block;margin-top:10px;">Tür</label>
+    <select id="trainRouteType">
+      <option value="metro">Metro</option>
+      <option value="suburban">Banliyö</option>
+      <option value="intercity_mainline">Anahat (Şehirler Arası Tren)</option>
+      <option value="intercity_regional">Bölgesel (Şehirler Arası Tren)</option>
+      <option value="high_speed">YHT (Şehirler Arası Tren)</option>
+      <option value="funicular">Füniküler</option>
+      <option value="tram">Tramvay</option>
+      <option value="cable_car">Teleferik</option>
+    </select>
+
+    <div id="trainRouteStationsList" class="station-list"></div>
+
+    <div id="trainRouteSelectedStations" class="selected-stations">
+      <strong>Seçili istasyonlar</strong>
+      Henüz seçilmedi
+    </div>
+
+    <div class="route-note">
+      Aşağıdaki listeden istasyonları tek tek seç.
+      Seçilen istasyonlar mavi çerçeveyle görünür.
+    </div>
+
+    <div class="actions">
+      <button id="trainRouteSaveButton" class="primary">Tamam</button>
+      <button id="trainRouteCancelButton" class="secondary">İptal</button>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-panel" id="bottomPanel">
+  <div id="inspectSwitch" class="switch" onclick="toggleInspect()"></div>
+  <button class="zoom-btn" onclick="map.zoomIn()">+</button>
+  <button class="zoom-btn" onclick="map.zoomOut()">-</button>
+</div>
+
+
+<div id="localDataPanel" class="local-data-panel">
+  <div class="header">
+    <div class="title">JSON kayıt</div>
+  </div>
+  <div class="body">
+    <textarea id="localJsonBox" readonly></textarea>
+    <div class="actions">
+      <button id="localJsonDownloadBtn" class="primary">İndir</button>
+      <button id="localJsonLoadBtn" class="secondary">Yükle</button>
+    </div>
+    <input id="localJsonFile" class="file-input" type="file" accept="application/json,.json" />
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<script>
+
+const map = L.map("map", {
+  crs: L.CRS.Simple,
+  minZoom: -5,
+  maxZoom: 5
+});
+
+const hashParams = new URLSearchParams(location.hash.slice(1));
+const publishedHash = hashParams.get("data");
+const viewerMode = !!publishedHash;
+
+let state = loadInitialState();
+let mode = "place";
+let inspectMode = false;
+let points = [];
+let previewLayer = null;
+
+let roadObjects = [];
+let placeObjects = [];
+let boundaryObjects = [];
+let arrowObjects = [];
+let railwayObjects = [];
+let blockerObjects = [];
+
+let selectedItem = null;
+let routeTarget = null;
+let routeStart = null;
+let routeState = "idle";
+let routeLayerGroup = L.layerGroup().addTo(map);
+let routeStartMarker = null;
+let routeTargetMarker = null;
+
+let junctionBlockerMode = false;
+let detailsViewMode = "details";
+
+let trainRouteCreateMode = false;
+let trainRouteDraft = {
+  name: "",
+  type: "metro",
+  stationIds: []
+};
+
+const ui = {
+  editorPanel: document.getElementById("editorPanel"),
+  viewerBadge: document.getElementById("viewerBadge"),
+  searchInput: document.getElementById("searchInput"),
+  searchResults: document.getElementById("searchResults"),
+  detailsPanel: document.getElementById("detailsPanel"),
+  detailsBackBtn: document.getElementById("detailsBackBtn"),
+  detailsTitle: document.getElementById("detailsTitle"),
+  detailsMeta: document.getElementById("detailsMeta"),
+  detailsBody: document.getElementById("detailsBody"),
+  routeButton: document.getElementById("routeButton"),
+  stationRoutesButton: document.getElementById("stationRoutesButton"),
+  deleteButton: document.getElementById("deleteButton"),
+  trainRoutesAddButton: document.getElementById("trainRoutesAddButton"),
+  routePanel: document.getElementById("routePanel"),
+  routeHint: document.getElementById("routeHint"),
+  routeStartBox: document.getElementById("routeStartBox"),
+  routeConfirmButton: document.getElementById("routeConfirmButton"),
+  routeCancelButton: document.getElementById("routeCancelButton"),
+  inspectSwitch: document.getElementById("inspectSwitch"),
+  bottomPanel: document.getElementById("bottomPanel"),
+  junctionBlockerButton: document.getElementById("junctionBlockerButton"),
+  trainRouteCreatePanel: document.getElementById("trainRouteCreatePanel"),
+  trainRouteName: document.getElementById("trainRouteName"),
+  trainRouteType: document.getElementById("trainRouteType"),
+  trainRouteStationsList: document.getElementById("trainRouteStationsList"),
+  trainRouteSelectedStations: document.getElementById("trainRouteSelectedStations"),
+  trainRouteSaveButton: document.getElementById("trainRouteSaveButton"),
+  trainRouteCancelButton: document.getElementById("trainRouteCancelButton"),
+  localDataPanel: document.getElementById("localDataPanel"),
+  localJsonBox: document.getElementById("localJsonBox"),
+  localJsonDownloadBtn: document.getElementById("localJsonDownloadBtn"),
+  localJsonLoadBtn: document.getElementById("localJsonLoadBtn"),
+  localJsonFile: document.getElementById("localJsonFile")
+};
+
+if (viewerMode) {
+  ui.editorPanel.classList.add("hidden");
+  ui.viewerBadge.classList.remove("hidden");
+  ui.deleteButton.style.display = "none";
+  ui.trainRoutesAddButton.classList.add("hidden");
+  ui.localDataPanel.classList.add("hidden");
+}
+
+refreshLocalJsonBox();
+
+function makeId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toLatLng(ll){
+  if (!ll) return null;
+  if (Array.isArray(ll)) return L.latLng(ll[0], ll[1]);
+  if (typeof ll.lat === "number" && typeof ll.lng === "number") return L.latLng(ll.lat, ll.lng);
+  return null;
+}
+
+function normalizePoints(pts){
+  return (pts || []).map(toLatLng).filter(Boolean);
+}
+
+function pointDistance(a, b){
+  return Math.hypot(a.lat - b.lat, a.lng - b.lng);
+}
+
+function pointKey(ll){
+  return `${ll.lat.toFixed(4)},${ll.lng.toFixed(4)}`;
+}
+
+function computeMidPoint(pts){
+  if (!pts.length) return L.latLng(0, 0);
+  let lat = 0;
+  let lng = 0;
+  pts.forEach(p => {
+    lat += p.lat;
+    lng += p.lng;
+  });
+  return L.latLng(lat / pts.length, lng / pts.length);
+}
+
+function normalizeState(src){
+  const withIds = (arr, prefix) =>
+    Array.isArray(arr)
+      ? arr.map(item => ({ id: item?.id || makeId(prefix), ...item }))
+      : [];
+
+  return {
+    roads: withIds(src?.roads, "road"),
+    places: withIds(src?.places, "place"),
+    boundaries: withIds(src?.boundaries, "boundary"),
+    blockers: withIds(src?.blockers, "blocker"),
+    trainRoutes: withIds(src?.trainRoutes, "trainroute")
+  };
+}
+
+function round4(value){
+  return Math.round(Number(value) * 10000) / 10000;
+}
+
+function compactLatLngArray(ll){
+  const p = toLatLng(ll);
+  if (!p) return null;
+  return [round4(p.lat), round4(p.lng)];
+}
+
+function compactPointsArray(pts){
+  return (pts || []).map(compactLatLngArray).filter(Boolean);
+}
+
+function serializeShareState(){
+  return {
+    v: 3,
+    r: state.roads.map(r => [r.id, r.name, r.type, r.dir, compactPointsArray(r.pts)]),
+    p: state.places.map(p => [p.id, p.name, p.type, compactLatLngArray(p.ll)]),
+    b: state.boundaries.map(b => [b.id, b.name, b.type, compactPointsArray(b.pts)]),
+    k: state.blockers.map(b => [b.id, compactLatLngArray(b.ll)]),
+    t: state.trainRoutes.map(t => [t.id, t.name, t.type, t.stationIds])
+  };
+}
+
+function expandSharedState(src){
+  if (src && (src.v === 2 || src.v === 3)) {
+    return normalizeState({
+      roads: (src.r || []).map(item => ({ id: item[0], name: item[1], type: item[2], dir: item[3], pts: item[4] })),
+      places: (src.p || []).map(item => ({ id: item[0], name: item[1], type: item[2], ll: item[3] })),
+      boundaries: (src.b || []).map(item => ({ id: item[0], name: item[1], type: item[2], pts: item[3] })),
+      blockers: (src.k || []).map(item => ({ id: item[0], ll: item[1] })),
+      trainRoutes: (src.t || []).map(item => ({ id: item[0], name: item[1], type: item[2], stationIds: item[3] }))
+    });
+  }
+  return normalizeState(src);
+}
+
+function loadInitialState(){
+  if (publishedHash) {
+    try {
+      const raw = decodeURIComponent(publishedHash);
+      let parsed;
+
+      if (raw.startsWith("lz:")) {
+        const compressed = raw.slice(3);
+        const json = window.LZString?.decompressFromEncodedURIComponent(compressed);
+        parsed = JSON.parse(json || "null");
+      } else if (raw.startsWith("v3:")) {
+        parsed = JSON.parse(raw.slice(3));
+      } else {
+        parsed = JSON.parse(raw);
+      }
+
+      return expandSharedState(parsed);
+    } catch (err) {
+      return { roads: [], places: [], boundaries: [], blockers: [], trainRoutes: [] };
+    }
+  }
+
+  try {
+    const raw = localStorage.getItem("roads") || "[]";
+    const rawPlaces = localStorage.getItem("places") || "[]";
+    const rawBoundaries = localStorage.getItem("boundaries") || "[]";
+    const rawBlockers = localStorage.getItem("blockers") || "[]";
+    const rawTrainRoutes = localStorage.getItem("trainRoutes") || "[]";
+    return normalizeState({
+      roads: JSON.parse(raw),
+      places: JSON.parse(rawPlaces),
+      boundaries: JSON.parse(rawBoundaries),
+      blockers: JSON.parse(rawBlockers),
+      trainRoutes: JSON.parse(rawTrainRoutes)
+    });
+  } catch (err) {
+    return { roads: [], places: [], boundaries: [], blockers: [], trainRoutes: [] };
+  }
+}
+
+function saveAll(){
+  if (viewerMode) return;
+  localStorage.setItem("roads", JSON.stringify(state.roads));
+  localStorage.setItem("places", JSON.stringify(state.places));
+  localStorage.setItem("boundaries", JSON.stringify(state.boundaries));
+  localStorage.setItem("blockers", JSON.stringify(state.blockers));
+  localStorage.setItem("trainRoutes", JSON.stringify(state.trainRoutes));
+  refreshLocalJsonBox();
+}
+
+function buildLocalJsonPayload(){
+  return {
+    roads: state.roads,
+    places: state.places,
+    boundaries: state.boundaries,
+    blockers: state.blockers,
+    trainRoutes: state.trainRoutes
+  };
+}
+
+function refreshLocalJsonBox(){
+  if (!ui.localJsonBox) return;
+  try {
+    ui.localJsonBox.value = JSON.stringify(buildLocalJsonPayload(), null, 2);
+  } catch (err) {
+    ui.localJsonBox.value = "";
+  }
+}
+
+function downloadLocalJson(){
+  if (viewerMode) return;
+  const json = ui.localJsonBox.value || JSON.stringify(buildLocalJsonPayload(), null, 2);
+  const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tren-dunyasi-harita-datasi.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function normalizeImportedPayload(src){
+  if (!src || typeof src !== "object") return { roads: [], places: [], boundaries: [], blockers: [], trainRoutes: [] };
+
+  if (Array.isArray(src.roads) || Array.isArray(src.places) || Array.isArray(src.boundaries) || Array.isArray(src.blockers) || Array.isArray(src.trainRoutes)) {
+    return normalizeState(src);
+  }
+
+  if (src.v === 2 || src.v === 3) {
+    return normalizeState({
+      roads: (src.r || []).map(item => ({ id: item[0], name: item[1], type: item[2], dir: item[3], pts: item[4] })),
+      places: (src.p || []).map(item => ({ id: item[0], name: item[1], type: item[2], ll: item[3] })),
+      boundaries: (src.b || []).map(item => ({ id: item[0], name: item[1], type: item[2], pts: item[3] })),
+      blockers: (src.k || []).map(item => ({ id: item[0], ll: item[1] })),
+      trainRoutes: (src.t || []).map(item => ({ id: item[0], name: item[1], type: item[2], stationIds: item[3] }))
+    });
+  }
+
+  if (src.state && typeof src.state === "object") {
+    return normalizeImportedPayload(src.state);
+  }
+
+  return normalizeState(src);
+}
+
+function applyImportedState(nextState){
+  state = normalizeImportedPayload(nextState);
+  saveAll();
+  loadAll();
+}
+
+function setTabUI(m){
+  document.querySelectorAll(".tab button").forEach(b => b.classList.remove("active"));
+  const active = document.getElementById("tab-" + m);
+  if (active) active.classList.add("active");
+}
+setTabUI("place");
+
+function setMode(m){
+  if (viewerMode) return;
+  if (inspectMode) return;
+  if (routeState !== "idle") return;
+  if (junctionBlockerMode) return;
+  if (trainRouteCreateMode) return;
+  mode = m;
+  points = [];
+  if (previewLayer) map.removeLayer(previewLayer);
+  setTabUI(m);
+}
+
+function toggleInspect(){
+  if (viewerMode) return;
+  if (trainRouteCreateMode) return;
+  inspectMode = !inspectMode;
+  ui.inspectSwitch.classList.toggle("on");
+}
+
+function roadStyle(t){
+  if (t === "street") return { color: "#9a9a9a", weight: 2 };
+  if (t === "road") return { color: "#666", weight: 4 };
+  if (t === "highway") return { color: "#2f365c", weight: 6 };
+  if (t === "bicycle") return { color: "#00bfff", weight: 4 };
+  if (t === "railway") return { color: "#000000", weight: 4 };
+  return { color: "#9a9a9a", weight: 2 };
+}
+
+function roadHighlightStyle(t){
+  if (t === "street") return { color: "#f59e0b", weight: 4 };
+  if (t === "road") return { color: "#f59e0b", weight: 5 };
+  if (t === "highway") return { color: "#f59e0b", weight: 7 };
+  if (t === "bicycle") return { color: "#0ea5e9", weight: 5 };
+  if (t === "railway") return { color: "#000000", weight: 5 };
+  return { color: "#f59e0b", weight: 4 };
+}
+
+function createStationIcon(selected=false){
+  return L.divIcon({
+    className: "",
+    html: `<div class="station-box ${selected ? "selected" : ""}">🚆</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+}
+
+function createBusStopIcon(selected=false){
+  return L.divIcon({
+    className: "",
+    html: `<div class="station-box ${selected ? "selected" : ""}">🚌</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+}
+
+function placePinColor(type) {
+  const colors = {
+    shop: "#f97316",
+    restaurant: "#ef4444",
+    gas_station: "#7c3aed",
+    cafe: "#d97706",
+    hospital: "#dc2626",
+    school: "#2563eb",
+    park: "#16a34a",
+    hotel: "#0f766e",
+    pharmacy: "#14b8a6",
+    prison: "#6b7280",
+    railway_service: "#111827",
+    government_building: "#334155",
+    police_station: "#1d4ed8",
+    fire_station: "#ea580c",
+    courthouse: "#475569",
+    post_office: "#b45309",
+    bank: "#0f172a",
+    library: "#7c3aed",
+    real_estate: "#db2777",
+    market: "#059669",
+    museum: "#8b5cf6",
+    ancient_city: "#92400e",
+    mall: "#0ea5e9",
+    mosque: "#10b981",
+    stadium: "#ef4444",
+    supermarket: "#22c55e",
+    train_station: "#111827",
+    bus_station: "#64748b",
+    factory: "#475569",
+    square: "#0f766e",
+    tower: "#6d28d9",
+    monument: "#b45309"
+  };
+  return colors[type] || "#f59e0b";
+}
+
+function createPlacePinIcon(type) {
+  const color = placePinColor(type);
+  return L.divIcon({
+    className: "",
+    html: `
+      <div style="
+        width:34px;
+        height:42px;
+        display:flex;
+        align-items:flex-start;
+        justify-content:center;
+        transform:translateY(-4px);
+        filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
+      ">
+        <svg width="34" height="42" viewBox="0 0 24 32" aria-hidden="true">
+          <path d="M12 1C7.03 1 3 5.03 3 10c0 6.2 9 21 9 21s9-14.8 9-21c0-4.97-4.03-9-9-9z"
+                fill="${color}" stroke="#111827" stroke-width="1.25"/>
+          <circle cx="12" cy="10" r="3.5" fill="white"/>
+        </svg>
+      </div>`,
+    iconSize: [34, 42],
+    iconAnchor: [17, 38]
+  });
+}
+
+function placeTypeLabel(type){
+  if (type === "shop") return "Mağaza";
+  if (type === "station") return "Tren İstasyonu";
+  if (type === "train_station") return "Tren İstasyonu";
+  if (type === "bus_station") return "Otobüs Durağı";
+  if (type === "restaurant") return "Restoran";
+  if (type === "gas_station") return "Benzinlik";
+  if (type === "cafe") return "Kafe";
+  if (type === "hospital") return "Hastane";
+  if (type === "school") return "Okul";
+  if (type === "park") return "Park";
+  if (type === "hotel") return "Otel";
+  if (type === "pharmacy") return "Eczane";
+  if (type === "museum") return "Müze";
+  if (type === "ancient_city") return "Antik Kent";
+  if (type === "mall") return "AVM";
+  if (type === "mosque") return "Cami";
+  if (type === "stadium") return "Stadyum";
+  if (type === "supermarket") return "Süpermarket";
+  if (type === "bank") return "Banka";
+  if (type === "library") return "Kütüphane";
+  if (type === "government_building") return "Devlet Binası";
+  if (type === "police_station") return "Polis Merkezi";
+  if (type === "fire_station") return "İtfaiye";
+  if (type === "courthouse") return "Adliye";
+  if (type === "post_office") return "Postane";
+  if (type === "real_estate") return "Emlak";
+  if (type === "market") return "Market/Bakkal";
+  if (type === "prison") return "Hapishane";
+  if (type === "railway_service") return "Demiryolu Hizmetleri";
+  if (type === "factory") return "Fabrika";
+  if (type === "square") return "Meydan";
+  if (type === "tower") return "Kule";
+  if (type === "monument") return "Heykel/Anıt";
+  return "Yer";
+}
+
+function trainRouteTypeLabel(type){
+  if (type === "metro") return "Metro";
+  if (type === "suburban") return "Banliyö";
+  if (type === "intercity_mainline") return "Anahat (Şehirler Arası Tren)";
+  if (type === "intercity_regional") return "Bölgesel (Şehirler Arası Tren)";
+  if (type === "high_speed") return "YHT (Şehirler Arası Tren)";
+  if (type === "funicular") return "Füniküler";
+  if (type === "tram") return "Tramvay";
+  if (type === "cable_car") return "Teleferik";
+  return "Tren";
+}
+
+function typeLabel(item){
+  if (item.kind === "road") {
+    if (item.type === "highway") return "Şehirler Arası Yol";
+    if (item.type === "road") return "Cadde";
+    if (item.type === "bicycle") return "Bisiklet Yolu";
+    if (item.type === "railway") return "Demiryolu";
+    return "Sokak";
+  }
+  if (item.kind === "place") return placeTypeLabel(item.type);
+  if (item.kind === "boundary") return "İl/İlçe/Mahalle Sınırı";
+  return "";
+}
+
+function normalizeText(s){
+  return (s || "")
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function escapeHtml(text){
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function clearSelectionStyles(){
+  if (selectedItem?.kind === "road") {
+    selectedItem.layer.setStyle(roadStyle(selectedItem.type));
+  }
+  if (selectedItem?.kind === "boundary") {
+    selectedItem.layer.setStyle({
+      color: "#d32f2f",
+      weight: 2,
+      opacity: 0,
+      fillOpacity: 0
+    });
+    selectedItem.visible = false;
+  }
+}
+
+function hideAllBoundaries(){
+  boundaryObjects.forEach(item => {
+    item.visible = false;
+    item.layer.setStyle({
+      color: "#d32f2f",
+      weight: 2,
+      opacity: 0,
+      fillOpacity: 0
+    });
+    if (map.hasLayer(item.layer)) item.layer.bringToBack();
+  });
+}
+
+function showBoundary(item){
+  hideAllBoundaries();
+  item.visible = true;
+  item.layer.setStyle({
+    color: "#f59e0b",
+    weight: 3,
+    opacity: 1,
+    fillOpacity: 0.06
+  });
+  item.layer.bringToFront();
+}
+
+function getNearestRoadForPoint(ll){
+  if (!ll) return null;
+
+  let bestRoad = null;
+  let bestDist = Infinity;
+
+  roadObjects.forEach(road => {
+    const pts = road.pts || [];
+    for (let i = 1; i < pts.length; i++) {
+      const proj = projectPointToSegment(ll, pts[i - 1], pts[i]);
+      if (proj.dist < bestDist) {
+        bestDist = proj.dist;
+        bestRoad = road;
+      }
+    }
+  });
+
+  return bestRoad;
+}
+
+function routeAnchor(item){
+  if (item.kind === "place") return item.ll;
+  if (item.kind === "road") return item.anchor || computeMidPoint(item.pts);
+  if (item.kind === "boundary") return item.anchor || item.layer.getBounds().getCenter();
+  return item.ll || item.anchor;
+}
+
+function graphAddDirected(graph, a, b, w){
+  if (a === b) return;
+  if (!graph.adj.has(a)) graph.adj.set(a, []);
+  graph.adj.get(a).push({ to: b, w });
+}
+
+function graphAddUndirected(graph, a, b, w){
+  graphAddDirected(graph, a, b, w);
+  graphAddDirected(graph, b, a, w);
+}
+
+function segmentIntersection(a, b, c, d){
+  const x1 = a.lng, y1 = a.lat;
+  const x2 = b.lng, y2 = b.lat;
+  const x3 = c.lng, y3 = c.lat;
+  const x4 = d.lng, y4 = d.lat;
+
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(denom) < 1e-9) return null;
+
+  const px = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denom;
+  const py = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denom;
+
+  const on1 = px >= Math.min(x1, x2) - 1e-6 && px <= Math.max(x1, x2) + 1e-6 && py >= Math.min(y1, y2) - 1e-6 && py <= Math.max(y1, y2) + 1e-6;
+  const on2 = px >= Math.min(x3, x4) - 1e-6 && px <= Math.max(x3, x4) + 1e-6 && py >= Math.min(y3, y4) - 1e-6 && py <= Math.max(y3, y4) + 1e-6;
+  if (!on1 || !on2) return null;
+
+  const dx1 = x2 - x1;
+  const dy1 = y2 - y1;
+  const dx2 = x4 - x3;
+  const dy2 = y4 - y3;
+  const t1 = Math.abs(dx1) >= Math.abs(dy1) ? (dx1 === 0 ? 0 : (px - x1) / dx1) : (dy1 === 0 ? 0 : (py - y1) / dy1);
+  const t2 = Math.abs(dx2) >= Math.abs(dy2) ? (dx2 === 0 ? 0 : (px - x3) / dx2) : (dy2 === 0 ? 0 : (py - y3) / dy2);
+
+  return { point: L.latLng(py, px), t1, t2 };
+}
+
+function projectPointToSegment(point, a, b){
+  const px = point.lng;
+  const py = point.lat;
+  const ax = a.lng;
+  const ay = a.lat;
+  const bx = b.lng;
+  const by = b.lat;
+
+  const vx = bx - ax;
+  const vy = by - ay;
+  const len2 = vx * vx + vy * vy;
+  let t = len2 === 0 ? 0 : ((px - ax) * vx + (py - ay) * vy) / len2;
+  t = Math.max(0, Math.min(1, t));
+
+  const snap = L.latLng(ay + vy * t, ax + vx * t);
+  const dist = Math.hypot(px - snap.lng, py - snap.lat);
+  return { snap, t, dist };
+}
+
+function getRoadIntersections(){
+  const intersections = [];
+  const rawSegments = [];
+
+  state.roads.forEach((r, roadIndex) => {
+    const pts = normalizePoints(r.pts);
+    if (r.type === "railway") return;
+    for (let i = 1; i < pts.length; i++) {
+      rawSegments.push({
+        roadIndex,
+        a: pts[i - 1],
+        b: pts[i]
+      });
+    }
+  });
+
+  for (let i = 0; i < rawSegments.length; i++) {
+    for (let j = i + 1; j < rawSegments.length; j++) {
+      const s1 = rawSegments[i];
+      const s2 = rawSegments[j];
+      if (s1.roadIndex === s2.roadIndex) continue;
+      const inter = segmentIntersection(s1.a, s1.b, s2.a, s2.b);
+      if (!inter) continue;
+      if (!(inter.t1 > 1e-6 && inter.t1 < 1 - 1e-6 && inter.t2 > 1e-6 && inter.t2 < 1 - 1e-6)) continue;
+
+      intersections.push({ point: inter.point });
+    }
+  }
+
+  return intersections;
+}
+
+function findNearestBlockableJunction(ll, tolerance = 2.0){
+  const intersections = getRoadIntersections();
+  let best = null;
+  let bestDist = Infinity;
+
+  intersections.forEach(item => {
+    const d = pointDistance(ll, item.point);
+    if (d <= tolerance && d < bestDist) {
+      best = item;
+      bestDist = d;
+    }
+  });
+
+  return best;
+}
+
+function buildRoadGraph(){
+  const graph = {
+    nodes: new Map(),
+    adj: new Map(),
+    segments: []
+  };
+
+  const blockerPoints = state.blockers.map(b => toLatLng(b.ll)).filter(Boolean);
+
+  function isNearBlocker(ll, tolerance = 0.5){
+    return blockerPoints.some(bp => pointDistance(ll, bp) <= tolerance);
+  }
+
+  function findNearbyNode(ll, tolerance = 2.25){
+    let bestKey = null;
+    let bestDist = Infinity;
+    for (const [key, node] of graph.nodes.entries()) {
+      const d = pointDistance(ll, node);
+      if (d <= tolerance && d < bestDist) {
+        bestDist = d;
+        bestKey = key;
+      }
+    }
+    return bestKey;
+  }
+
+  function ensureNode(ll, roadIndex, forceSeparate = false){
+    const blocked = forceSeparate || isNearBlocker(ll);
+    if (blocked && typeof roadIndex === "number") {
+      const key = `${pointKey(ll)}|r${roadIndex}`;
+      if (!graph.nodes.has(key)) {
+        graph.nodes.set(key, ll);
+        graph.adj.set(key, []);
+      }
+      return key;
+    }
+
+    const nearby = findNearbyNode(ll);
+    if (nearby) return nearby;
+    const key = pointKey(ll);
+    if (!graph.nodes.has(key)) {
+      graph.nodes.set(key, ll);
+      graph.adj.set(key, []);
+    }
+    return key;
+  }
+
+  const rawSegments = [];
+  state.roads.forEach((r, roadIndex) => {
+    if (r.type === "railway") return;
+
+    const pts = normalizePoints(r.pts);
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      rawSegments.push({
+        roadIndex,
+        segIndex: i - 1,
+        a,
+        b,
+        idA: ensureNode(a, roadIndex),
+        idB: ensureNode(b, roadIndex),
+        roadType: r.type,
+        dir: r.dir,
+        pointsOnSeg: new Map([
+          [pointKey(a), { t: 0, ll: a, id: ensureNode(a, roadIndex) }],
+          [pointKey(b), { t: 1, ll: b, id: ensureNode(b, roadIndex) }]
+        ]),
+        tempPoints: []
+      });
+    }
+  });
+
+  for (let i = 0; i < rawSegments.length; i++) {
+    for (let j = i + 1; j < rawSegments.length; j++) {
+      const s1 = rawSegments[i];
+      const s2 = rawSegments[j];
+      const inter = segmentIntersection(s1.a, s1.b, s2.a, s2.b);
+      if (!inter) continue;
+
+      const { point, t1, t2 } = inter;
+      const isBlocked = isNearBlocker(point);
+      const id1 = ensureNode(point, s1.roadIndex, isBlocked);
+      const id2 = ensureNode(point, s2.roadIndex, isBlocked);
+
+      const key1 = pointKey(point) + (isBlocked ? `|r${s1.roadIndex}` : "");
+      const key2 = pointKey(point) + (isBlocked ? `|r${s2.roadIndex}` : "");
+
+      if (t1 > 1e-6 && t1 < 1 - 1e-6) s1.pointsOnSeg.set(key1, { t: t1, ll: point, id: id1 });
+      if (t2 > 1e-6 && t2 < 1 - 1e-6) s2.pointsOnSeg.set(key2, { t: t2, ll: point, id: id2 });
+    }
+  }
+
+  rawSegments.forEach(seg => {
+    const pts = [...seg.pointsOnSeg.values()].sort((a, b) => a.t - b.t);
+
+    for (let i = 1; i < pts.length; i++) {
+      const p1 = pts[i - 1].ll;
+      const p2 = pts[i].ll;
+      const id1 = pts[i - 1].id || ensureNode(p1, seg.roadIndex);
+      const id2 = pts[i].id || ensureNode(p2, seg.roadIndex);
+      const w = pointDistance(p1, p2);
+
+      if (seg.dir === "one") {
+        graphAddDirected(graph, id1, id2, w);
+      } else {
+        graphAddUndirected(graph, id1, id2, w);
+      }
+    }
+
+    graph.segments.push({
+      roadIndex: seg.roadIndex,
+      segIndex: seg.segIndex,
+      a: seg.a,
+      b: seg.b,
+      idA: seg.idA,
+      idB: seg.idB,
+      roadType: seg.roadType,
+      dir: seg.dir,
+      pointsOnSeg: pts,
+      tempPoints: seg.tempPoints
+    });
+  });
+
+  return graph;
+}
+
+function nearestProjection(point, graph){
+  let best = null;
+  for (const seg of graph.segments) {
+    const proj = projectPointToSegment(point, seg.a, seg.b);
+    if (!best || proj.dist < best.dist) {
+      const dA = pointDistance(proj.snap, seg.a);
+      const dB = pointDistance(proj.snap, seg.b);
+      const atNodeId = dA < 1e-6 ? seg.idA : (dB < 1e-6 ? seg.idB : null);
+      best = {
+        ...proj,
+        a: seg.a,
+        b: seg.b,
+        idA: seg.idA,
+        idB: seg.idB,
+        segKey: `${seg.roadIndex}:${seg.segIndex}`,
+        roadIndex: seg.roadIndex,
+        segIndex: seg.segIndex,
+        dA,
+        dB,
+        seg,
+        atNodeId
+      };
+    }
+  }
+  return best;
+}
+
+function attachTempProjection(graph, id, proj, role){
+  graph.nodes.set(id, proj.snap);
+  graph.adj.set(id, []);
+  const seg = proj.seg;
+  if (!seg) return;
+  seg.tempPoints.push({
+    t: proj.t,
+    ll: proj.snap,
+    id,
+    role
+  });
+}
+
+function finalizeTempConnections(graph){
+  graph.segments.forEach(seg => {
+    if (!seg.tempPoints || !seg.tempPoints.length) return;
+    const ordered = [...seg.pointsOnSeg, ...seg.tempPoints].sort((a, b) => a.t - b.t);
+
+    for (let i = 1; i < ordered.length; i++) {
+      const left = ordered[i - 1];
+      const right = ordered[i];
+      const w = pointDistance(left.ll, right.ll);
+
+      if (seg.dir === "one") {
+        graphAddDirected(graph, left.id, right.id, w);
+      } else {
+        graphAddUndirected(graph, left.id, right.id, w);
+      }
+    }
+  });
+}
+
+function dijkstra(graph, startId, endId){
+  const dist = new Map();
+  const prev = new Map();
+  const unvisited = new Set(graph.nodes.keys());
+
+  graph.nodes.forEach((_, id) => dist.set(id, Infinity));
+  dist.set(startId, 0);
+
+  while (unvisited.size) {
+    let current = null;
+    let best = Infinity;
+    for (const id of unvisited) {
+      const d = dist.get(id);
+      if (d < best) {
+        best = d;
+        current = id;
+      }
+    }
+
+    if (current === null || best === Infinity) break;
+    if (current === endId) break;
+    unvisited.delete(current);
+
+    const neighbors = graph.adj.get(current) || [];
+    for (const n of neighbors) {
+      if (!unvisited.has(n.to)) continue;
+      const alt = dist.get(current) + n.w;
+      if (alt < dist.get(n.to)) {
+        dist.set(n.to, alt);
+        prev.set(n.to, current);
+      }
+    }
+  }
+
+  if (!prev.has(endId) && startId !== endId) {
+    return startId === endId ? [startId] : null;
+  }
+
+  const path = [];
+  let cur = endId;
+  while (cur !== undefined) {
+    path.unshift(cur);
+    if (cur === startId) break;
+    cur = prev.get(cur);
+    if (cur === undefined) return null;
+  }
+  return path;
+}
+
+function computeRoute(startPoint, targetItem){
+  if (targetItem.kind === "road" && (targetItem.type === "bicycle" || targetItem.type === "railway")) return null;
+
+  const graph = buildRoadGraph();
+  if (graph.segments.length === 0) return null;
+
+  const targetPoint = routeAnchor(targetItem);
+  const startProj = nearestProjection(startPoint, graph);
+  const targetProj = nearestProjection(targetPoint, graph);
+  if (!startProj || !targetProj) return null;
+
+  const startId = startProj.atNodeId || "__start__";
+  const targetId = targetProj.atNodeId || "__target__";
+
+  if (!startProj.atNodeId) {
+    attachTempProjection(graph, startId, startProj, "start");
+  } else {
+    graph.nodes.set(startId, startProj.snap);
+    if (!graph.adj.has(startId)) graph.adj.set(startId, []);
+  }
+
+  if (!targetProj.atNodeId) {
+    attachTempProjection(graph, targetId, targetProj, "target");
+  } else {
+    graph.nodes.set(targetId, targetProj.snap);
+    if (!graph.adj.has(targetId)) graph.adj.set(targetId, []);
+  }
+
+  finalizeTempConnections(graph);
+
+  const pathIds = dijkstra(graph, startId, targetId);
+  if (!pathIds) return null;
+
+  const path = pathIds.map(id => graph.nodes.get(id));
+  return {
+    path,
+    startProj,
+    targetProj,
+    targetPoint
+  };
+}
+
+function clearRouteOverlay(){
+  routeLayerGroup.clearLayers();
+  routeStartMarker = null;
+  routeTargetMarker = null;
+}
+
+function drawRoute(route){
+  clearRouteOverlay();
+  routeLayerGroup.clearLayers();
+
+  const solidPath = route.path || [];
+  if (solidPath.length < 2) return;
+
+  const startPoint = routeStart;
+  const targetPoint = routeAnchor(routeTarget);
+
+  if (pointDistance(startPoint, route.startProj.snap) > 0.01) {
+    L.polyline([startPoint, route.startProj.snap], {
+      color: "#94a3b8",
+      weight: 3,
+      dashArray: "8,8"
+    }).addTo(routeLayerGroup);
+  }
+
+  L.polyline(solidPath, {
+    color: "#2563eb",
+    weight: 5,
+    opacity: 0.95
+  }).addTo(routeLayerGroup);
+
+  if (pointDistance(route.targetProj.snap, targetPoint) > 0.01) {
+    L.polyline([route.targetProj.snap, targetPoint], {
+      color: "#94a3b8",
+      weight: 3,
+      dashArray: "8,8"
+    }).addTo(routeLayerGroup);
+  }
+
+  routeStartMarker = L.circleMarker(startPoint, {
+    radius: 6,
+    color: "#16a34a",
+    fillColor: "#22c55e",
+    fillOpacity: 1,
+    weight: 2
+  }).addTo(routeLayerGroup);
+
+  routeTargetMarker = L.circleMarker(targetPoint, {
+    radius: 6,
+    color: "#dc2626",
+    fillColor: "#ef4444",
+    fillOpacity: 1,
+    weight: 2
+  }).addTo(routeLayerGroup);
+
+  map.fitBounds(routeLayerGroup.getBounds().pad(0.2));
+  ui.routeHint.textContent = "Rota çizildi.";
+  ui.routeConfirmButton.disabled = true;
+}
+
+function clearRouteMode(){
+  routeState = "idle";
+  routeTarget = null;
+  routeStart = null;
+  routeLayerGroup.clearLayers();
+  routeStartMarker = null;
+  routeTargetMarker = null;
+  ui.routePanel.classList.add("hidden");
+  ui.routeHint.textContent = "Harita üzerinde başlangıç noktasını seçin.";
+  ui.routeStartBox.textContent = "Başlangıç seçilmedi";
+  ui.routeConfirmButton.disabled = true;
+}
+
+function startDirections(){
+  if (!selectedItem) return;
+  if (selectedItem.kind === "road" && (selectedItem.type === "bicycle" || selectedItem.type === "railway")) {
+    alert("Bu yol için yol tarifi kullanılamaz.");
+    return;
+  }
+  routeTarget = selectedItem;
+  routeStart = null;
+  routeState = "pick_start";
+  routeLayerGroup.clearLayers();
+  routeStartMarker = null;
+  routeTargetMarker = null;
+  ui.routePanel.classList.remove("hidden");
+  ui.routeHint.textContent = "Harita üzerinde başlangıç noktasını seçin.";
+  ui.routeStartBox.textContent = "Başlangıç seçilmedi";
+  ui.routeConfirmButton.disabled = true;
+}
+
+function confirmRoutePoint(){
+  if (!routeStart || !routeTarget) return;
+  if (routeTarget.kind === "road" && (routeTarget.type === "bicycle" || routeTarget.type === "railway")) {
+    alert("Bu yol için yol tarifi kullanılamaz.");
+    return;
+  }
+  const route = computeRoute(routeStart, routeTarget);
+  if (!route) {
+    alert("Yol bulunamadı.");
+    return;
+  }
+  drawRoute(route);
+}
+
+function clearRoadArrows(){
+  arrowObjects.forEach(a => {
+    if (map.hasLayer(a)) map.removeLayer(a);
+  });
+  arrowObjects = [];
+}
+
+function clearRailwayTicks(){
+  railwayObjects.forEach(a => {
+    if (map.hasLayer(a)) map.removeLayer(a);
+  });
+  railwayObjects = [];
+}
+
+function clearRenderedLayers(){
+  roadObjects.forEach(item => {
+    if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer);
+  });
+  placeObjects.forEach(item => {
+    if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer);
+  });
+  boundaryObjects.forEach(item => {
+    if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer);
+  });
+  blockerObjects.forEach(item => {
+    if (item.layer && map.hasLayer(item.layer)) map.removeLayer(item.layer);
+  });
+  clearRoadArrows();
+  clearRailwayTicks();
+}
+
+function addRailwayTicks(pts){
+  if (!pts || pts.length < 2) return;
+
+  const spacing = 80;
+  let traveled = 0;
+  let next = spacing;
+
+  for (let i = 1; i < pts.length; i++) {
+    const p1 = pts[i - 1];
+    const p2 = pts[i];
+
+    const c1 = map.latLngToContainerPoint(p1);
+    const c2 = map.latLngToContainerPoint(p2);
+    const dx = c2.x - c1.x;
+    const dy = c2.y - c1.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+    if (segLen === 0) continue;
+
+    while (traveled + segLen >= next) {
+      const t = (next - traveled) / segLen;
+      const lat = p1.lat + (p2.lat - p1.lat) * t;
+      const lng = p1.lng + (p2.lng - p1.lng) * t;
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+
+      const tick = L.marker([lat, lng], {
+        zIndexOffset: 4500,
+        interactive: false,
+        icon: L.divIcon({
+          className: "",
+          html: `
+            <div style="
+              width:20px;
+              height:20px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              transform:rotate(${angle}deg);
+              transform-origin:center;
+              filter:drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 2px #ffffff);
+            ">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 12H18" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>`
+        })
+      }).addTo(map);
+
+      railwayObjects.push(tick);
+      next += spacing;
+    }
+
+    traveled += segLen;
+  }
+}
+
+function addRoadArrows(pts){
+  if (!pts || pts.length < 2) return;
+
+  const spacing = 80;
+  let traveled = 0;
+  let next = spacing;
+
+  for (let i = 1; i < pts.length; i++) {
+    const p1 = pts[i - 1];
+    const p2 = pts[i];
+
+    const c1 = map.latLngToContainerPoint(p1);
+    const c2 = map.latLngToContainerPoint(p2);
+    const dx = c2.x - c1.x;
+    const dy = c2.y - c1.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+    if (segLen === 0) continue;
+
+    while (traveled + segLen >= next) {
+      const t = (next - traveled) / segLen;
+      const lat = p1.lat + (p2.lat - p1.lat) * t;
+      const lng = p1.lng + (p2.lng - p1.lng) * t;
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      const arrow = L.marker([lat, lng], {
+        zIndexOffset: 5000,
+        interactive: false,
+        icon: L.divIcon({
+          className: "",
+          html: `
+            <div style="
+              width:30px;
+              height:30px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              transform:rotate(${angle}deg);
+              transform-origin:center;
+              filter:drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 2px #ffffff);
+            ">
+              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12H17" stroke="#0f2a6d" stroke-width="4" stroke-linecap="round"/>
+                <path d="M12 6L18 12L12 18" fill="none" stroke="#0f2a6d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>`
+        })
+      }).addTo(map);
+
+      arrowObjects.push(arrow);
+      next += spacing;
+    }
+
+    traveled += segLen;
+  }
+}
+
+function updateArrowVisibility(){
+  const z = map.getZoom();
+  [...arrowObjects, ...railwayObjects].forEach(layer => {
+    if (z >= 1) {
+      if (!map.hasLayer(layer)) map.addLayer(layer);
+    } else {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+    }
+  });
+}
+
+function isTrainStationPlace(item){
+  return item && item.kind === "place" && (item.type === "station" || item.type === "train_station");
+}
+
+function renderPlace(item){
+  const ll = toLatLng(item.ll);
+  if (!ll) return null;
+
+  let marker;
+
+  if (item.type === "station" || item.type === "train_station") {
+    marker = L.marker(ll, { icon: createStationIcon(false) });
+  } else if (item.type === "bus_station") {
+    marker = L.marker(ll, { icon: createBusStopIcon(false) });
+  } else {
+    marker = L.marker(ll, { icon: createPlacePinIcon(item.type) });
+  }
+
+  marker.on("click", () => {
+    if (routeState === "pick_start") return;
+    if (junctionBlockerMode) return;
+
+    if (trainRouteCreateMode && isTrainStationPlace(item) && !viewerMode) {
+      toggleTrainRouteStationById(item.id);
+      return;
+    }
+
+    if (!viewerMode && !inspectMode) return;
+    const found = placeObjects.find(o => o.id === item.id);
+    if (found) selectItem(found);
+  });
+
+  marker.addTo(map);
+
+  const obj = {
+    kind: "place",
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    ll,
+    layer: marker,
+    anchor: ll
+  };
+  placeObjects.push(obj);
+
+  if (map.getZoom() < 1) map.removeLayer(marker);
+  return obj;
+}
+
+function renderRoad(item){
+  const pts = normalizePoints(item.pts);
+  if (pts.length < 2) return null;
+
+  const line = L.polyline(pts, roadStyle(item.type)).addTo(map);
+  const obj = {
+    kind: "road",
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    dir: item.dir,
+    pts,
+    layer: line,
+    anchor: computeMidPoint(pts),
+    bounds: line.getBounds()
+  };
+  roadObjects.push(obj);
+
+  line.on("click", () => {
+    if (routeState === "pick_start") return;
+    if (junctionBlockerMode) return;
+    if (!viewerMode && !inspectMode) return;
+    selectItem(obj);
+  });
+
+  if (item.type === "railway") {
+    addRailwayTicks(pts);
+  }
+
+  if (item.dir === "one") {
+    addRoadArrows(pts);
+  }
+
+  return obj;
+}
+
+function renderBoundary(item){
+  const pts = normalizePoints(item.pts);
+  if (pts.length < 3) return null;
+
+  const poly = L.polygon(pts, {
+    color: "#d32f2f",
+    weight: 2,
+    opacity: 0,
+    fillOpacity: 0
+  }).addTo(map);
+
+  const obj = {
+    kind: "boundary",
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    pts,
+    layer: poly,
+    anchor: poly.getBounds().getCenter(),
+    bounds: poly.getBounds(),
+    visible: false
+  };
+  boundaryObjects.push(obj);
+
+  poly.on("click", () => {
+    if (routeState === "pick_start") return;
+    if (junctionBlockerMode) return;
+    if (!viewerMode && !inspectMode) return;
+    if (!obj.visible) return;
+    selectItem(obj);
+  });
+
+  return obj;
+}
+
+function renderBlocker(ll){
+  const obj = {
+    kind: "blocker",
+    ll,
+    layer: null
+  };
+
+  if (!viewerMode) {
+    const marker = L.circleMarker(ll, {
+      radius: 7,
+      color: "#dc2626",
+      weight: 2,
+      fillColor: "#ef4444",
+      fillOpacity: 1
+    }).addTo(map);
+
+    obj.layer = marker;
+    blockerObjects.push(obj);
+  }
+
+  return obj;
+}
+
+function addPlace(name, ll, type){
+  const item = { id: makeId("place"), name, ll: [ll.lat, ll.lng], type };
+  state.places.push(item);
+  saveAll();
+  renderPlace(item);
+}
+
+function addRoad(name, pts, type, dir){
+  const item = { id: makeId("road"), name, pts: pts.map(p => [p.lat, p.lng]), type, dir };
+  state.roads.push(item);
+  saveAll();
+  renderRoad(item);
+}
+
+function addBoundary(name, type, pts){
+  const item = { id: makeId("boundary"), name, type, pts: pts.map(p => [p.lat, p.lng]) };
+  state.boundaries.push(item);
+  saveAll();
+  renderBoundary(item);
+}
+
+function addBlocker(ll){
+  const key = pointKey(ll);
+  if (state.blockers.some(b => pointKey(toLatLng(b.ll)) === key)) return;
+
+  state.blockers.push({ id: makeId("blocker"), ll: [ll.lat, ll.lng] });
+  saveAll();
+  renderBlocker(ll);
+}
+
+function getStationItemById(id){
+  return placeObjects.find(p => p.id === id && isTrainStationPlace(p));
+}
+
+function getTrainRoutesForStation(stationId){
+  return state.trainRoutes.filter(r => Array.isArray(r.stationIds) && r.stationIds.includes(stationId));
+}
+
+function deleteTrainRoute(routeId){
+  if (viewerMode) return;
+  const route = state.trainRoutes.find(r => r.id === routeId);
+  if (!route) return;
+  const ok = confirm(`${route.name} silinsin mi?`);
+  if (!ok) return;
+
+  state.trainRoutes = state.trainRoutes.filter(r => r.id !== routeId);
+  saveAll();
+  if (selectedItem && isTrainStationPlace(selectedItem) && detailsViewMode === "trainRoutes") {
+    updateDetailsCard();
+  }
+}
+
+function renderTrainRouteList(stationItem){
+  const routes = getTrainRoutesForStation(stationItem.id);
+
+  ui.detailsTitle.textContent = stationItem.name;
+  ui.detailsMeta.textContent = "İstasyondan Geçen Trenler";
+
+  ui.detailsBody.innerHTML = routes.length
+    ? `
+      <div class="route-list">
+        ${routes.map(route => {
+          const stationNames = (route.stationIds || [])
+            .map(id => getStationItemById(id)?.name || "Silinmiş istasyon")
+            .join(" - ");
+
+          return `
+            <div class="train-route-item">
+              <div class="route-name">${escapeHtml(route.name || "İsimsiz rota")}</div>
+              <div class="route-meta">${escapeHtml(trainRouteTypeLabel(route.type))}</div>
+              <div class="route-stations">${escapeHtml(stationNames || "İstasyon seçilmedi")}</div>
+              ${viewerMode ? "" : `<div class="route-actions"><button class="danger-btn" data-route-id="${route.id}">🗑 Sil</button></div>`}
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `
+    : `<div style="color:#6b7280;line-height:1.5;">Bu istasyondan geçen tren rotası yok.</div>`;
+
+  ui.detailsBackBtn.classList.remove("hidden");
+  ui.routeButton.classList.add("hidden");
+  ui.stationRoutesButton.classList.add("hidden");
+  ui.deleteButton.classList.add("hidden");
+  ui.trainRoutesAddButton.classList.toggle("hidden", viewerMode);
+
+  ui.detailsPanel.classList.remove("hidden");
+
+  if (!viewerMode) {
+    ui.trainRoutesAddButton.style.display = "block";
+    ui.trainRoutesAddButton.onclick = openTrainRouteCreate;
+  }
+
+  [...ui.detailsBody.querySelectorAll("button[data-route-id]")].forEach(btn => {
+    btn.addEventListener("click", () => deleteTrainRoute(btn.dataset.routeId));
+  });
+}
+
+function updateDetailsCard(){
+  if (!selectedItem) {
+    ui.detailsPanel.classList.add("hidden");
+    return;
+  }
+
+  ui.detailsPanel.classList.remove("hidden");
+  ui.detailsBackBtn.classList.toggle("hidden", detailsViewMode !== "trainRoutes");
+  ui.detailsTitle.textContent = selectedItem.name;
+  ui.detailsMeta.textContent = typeLabel(selectedItem);
+
+  if (detailsViewMode === "trainRoutes" && isTrainStationPlace(selectedItem)) {
+    renderTrainRouteList(selectedItem);
+    return;
+  }
+
+  ui.routeButton.classList.remove("hidden");
+  ui.stationRoutesButton.classList.remove("hidden");
+  ui.deleteButton.classList.remove("hidden");
+  ui.trainRoutesAddButton.classList.add("hidden");
+  ui.detailsBody.innerHTML = "";
+
+  if (selectedItem.kind === "boundary") {
+    ui.detailsBody.textContent = "Bu sınır aramada görünür ve seçildiğinde haritada vurgulanır.";
+  } else if (selectedItem.kind === "road") {
+    ui.detailsBody.textContent = selectedItem.type === "railway"
+      ? "Demiryollarına yol tarifi yapılamaz."
+      : "Seçilen yol haritada odaklanır.";
+  } else {
+    const nearestRoad = getNearestRoadForPoint(selectedItem.ll);
+    const roadText = nearestRoad
+      ? `Bulunduğu yol: ${nearestRoad.name} (${typeLabel(nearestRoad)})`
+      : "Bulunduğu yol bulunamadı.";
+    ui.detailsBody.textContent = `Seçilen yer haritada odaklanır. ${roadText}`;
+  }
+
+  ui.routeButton.textContent = "Taşıtlar İçin Yol Tarifi";
+  ui.routeButton.style.display = (selectedItem.kind === "road" && selectedItem.type === "railway") ? "none" : "block";
+  ui.routeButton.disabled = selectedItem.kind === "road" && (selectedItem.type === "bicycle" || selectedItem.type === "railway");
+  ui.stationRoutesButton.style.display = isTrainStationPlace(selectedItem) ? "block" : "none";
+  ui.deleteButton.style.display = viewerMode ? "none" : "block";
+}
+
+function selectItem(item){
+  clearRouteMode();
+  closeTrainRouteCreate();
+  clearSelectionStyles();
+  selectedItem = item;
+  detailsViewMode = "details";
+
+  if (item.kind === "boundary") {
+    showBoundary(item);
+    map.fitBounds(item.layer.getBounds().pad(0.2));
+  } else if (item.kind === "road") {
+    item.layer.setStyle(roadHighlightStyle(item.type));
+    map.fitBounds(item.layer.getBounds().pad(0.2));
+  } else if (item.kind === "place") {
+    map.setView(item.ll, Math.max(map.getZoom(), 4));
+  }
+
+  updateDetailsCard();
+}
+
+function showStationTrainRoutes(){
+  if (!selectedItem || !isTrainStationPlace(selectedItem)) return;
+  detailsViewMode = "trainRoutes";
+  updateDetailsCard();
+}
+
+function backFromTrainRoutes(){
+  detailsViewMode = "details";
+  updateDetailsCard();
+}
+
+function closeDetails(){
+  clearRouteMode();
+  closeTrainRouteCreate();
+  clearSelectionStyles();
+  selectedItem = null;
+  detailsViewMode = "details";
+  ui.detailsPanel.classList.add("hidden");
+}
+
+function startDirectionsForSelected(){
+  startDirections();
+}
+
+function compactShareState(){
+  return {
+    v: 2,
+    r: state.roads.map(r => [r.id, r.name, r.type, r.dir, r.pts]),
+    p: state.places.map(p => [p.id, p.name, p.type, p.ll]),
+    b: state.boundaries.map(b => [b.id, b.name, b.type, b.pts]),
+    k: state.blockers.map(b => [b.id, b.ll]),
+    t: state.trainRoutes.map(t => [t.id, t.name, t.type, t.stationIds])
+  };
+}
+
+function publishMap(){
+  if (viewerMode) return;
+  const payload = serializeShareState();
+  const json = JSON.stringify(payload);
+  const compressed = window.LZString?.compressToEncodedURIComponent(json);
+  const finalPayload = compressed ? `lz:${compressed}` : `v3:${json}`;
+  const encoded = encodeURIComponent(finalPayload);
+  const link = `${location.origin + location.pathname}#data=${encoded}`;
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(link).then(() => {
+      alert("Yayın linki kopyalandı.");
+    }).catch(() => {
+      prompt("Linki kopyala", link);
+    });
+  } else {
+    prompt("Linki kopyala", link);
+  }
+}
+
+function updatePlaces(){
+  const z = map.getZoom();
+  placeObjects.forEach(item => {
+    if (z >= 1) {
+      if (!map.hasLayer(item.layer)) map.addLayer(item.layer);
+    } else {
+      if (map.hasLayer(item.layer)) map.removeLayer(item.layer);
+    }
+  });
+}
+
+function getSearchResults(q){
+  const all = [...roadObjects, ...placeObjects, ...boundaryObjects];
+  return all
+    .filter(item => normalizeText(item.name).includes(q))
+    .sort((a, b) => {
+      const an = normalizeText(a.name);
+      const bn = normalizeText(b.name);
+      const aScore = an.startsWith(q) ? 0 : 1;
+      const bScore = bn.startsWith(q) ? 0 : 1;
+      if (aScore !== bScore) return aScore - bScore;
+      return an.localeCompare(bn, "tr");
+    });
+}
+
+function refreshSearchResults(){
+  const q = normalizeText(ui.searchInput.value.trim());
+  if (!q) {
+    ui.searchResults.classList.add("hidden");
+    ui.searchResults.innerHTML = "";
+    return;
+  }
+
+  const results = getSearchResults(q);
+  ui.searchResults.classList.remove("hidden");
+  ui.searchResults.innerHTML = results.length
+    ? results.map((item, idx) => `
+      <div class="search-item" data-index="${idx}">
+        <div>${escapeHtml(item.name)}</div>
+        <div class="type">${escapeHtml(typeLabel(item))}</div>
+      </div>
+    `).join("")
+    : `<div class="search-item" style="cursor:default;color:#6b7280;">Sonuç bulunamadı</div>`;
+
+  [...ui.searchResults.querySelectorAll(".search-item[data-index]")].forEach(el => {
+    el.addEventListener("click", () => {
+      const item = results[Number(el.dataset.index)];
+      selectItem(item);
+      ui.searchResults.classList.add("hidden");
+    });
+  });
+}
+
+function isTrainRouteStationSelected(id){
+  return trainRouteDraft.stationIds.includes(id);
+}
+
+function updateTrainRouteDraftPanel(){
+  const names = trainRouteDraft.stationIds
+    .map(id => getStationItemById(id)?.name || "Silinmiş istasyon");
+
+  ui.trainRouteName.value = trainRouteDraft.name;
+  ui.trainRouteType.value = trainRouteDraft.type;
+
+  ui.trainRouteSelectedStations.innerHTML = names.length
+    ? `<strong>Seçili istasyonlar (${names.length})</strong>${escapeHtml(names.join(" • "))}`
+    : `<strong>Seçili istasyonlar</strong> Henüz seçilmedi`;
+
+  ui.trainRouteSaveButton.disabled = !trainRouteDraft.name.trim() || trainRouteDraft.stationIds.length === 0;
+}
+
+function renderTrainRouteStationList(){
+  const stations = placeObjects.filter(isTrainStationPlace);
+  if (!stations.length) {
+    ui.trainRouteStationsList.innerHTML = `<div style="padding:10px 8px;color:#6b7280;font-size:13px;">Haritada tren istasyonu yok.</div>`;
+    return;
+  }
+
+  ui.trainRouteStationsList.innerHTML = stations.map(station => {
+    const checked = isTrainRouteStationSelected(station.id) ? "checked" : "";
+    return `
+      <label class="station-list-item">
+        <input type="checkbox" data-station-id="${station.id}" ${checked} />
+        <div>
+          <div class="station-name">${escapeHtml(station.name)}</div>
+          <div class="station-sub">Tren İstasyonu</div>
+        </div>
+      </label>
+    `;
+  }).join("");
+
+  [...ui.trainRouteStationsList.querySelectorAll('input[type="checkbox"][data-station-id]')].forEach(cb => {
+    cb.addEventListener("change", () => {
+      toggleTrainRouteStationById(cb.dataset.stationId);
+    });
+  });
+}
+
+function refreshTrainRouteDraftMarkers(){
+  placeObjects.forEach(item => {
+    if (!item.layer) return;
+    if (item.type === "station" || item.type === "train_station") {
+      item.layer.setIcon(createStationIcon(isTrainRouteStationSelected(item.id)));
+    } else if (item.type === "bus_station") {
+      item.layer.setIcon(createBusStopIcon(false));
+    }
+  });
+  updateTrainRouteDraftPanel();
+  renderTrainRouteStationList();
+}
+
+function openTrainRouteCreate(){
+  if (viewerMode) return;
+  if (detailsViewMode !== "trainRoutes" || !isTrainStationPlace(selectedItem)) return;
+
+  trainRouteCreateMode = true;
+  trainRouteDraft = {
+    name: "",
+    type: "metro",
+    stationIds: []
+  };
+
+  ui.trainRouteName.value = "";
+  ui.trainRouteType.value = "metro";
+  ui.trainRouteCreatePanel.classList.remove("hidden");
+  renderTrainRouteStationList();
+  updateTrainRouteDraftPanel();
+  refreshTrainRouteDraftMarkers();
+}
+
+function closeTrainRouteCreate(){
+  trainRouteCreateMode = false;
+  ui.trainRouteCreatePanel.classList.add("hidden");
+  trainRouteDraft = {
+    name: "",
+    type: "metro",
+    stationIds: []
+  };
+  refreshTrainRouteDraftMarkers();
+}
+
+function toggleTrainRouteStationById(id){
+  if (viewerMode) return;
+
+  const idx = trainRouteDraft.stationIds.indexOf(id);
+  if (idx >= 0) {
+    trainRouteDraft.stationIds.splice(idx, 1);
+  } else {
+    trainRouteDraft.stationIds.push(id);
+  }
+
+  renderTrainRouteStationList();
+  refreshTrainRouteDraftMarkers();
+  updateTrainRouteDraftPanel();
+}
+
+function saveTrainRouteCreate(){
+  if (viewerMode) return;
+  const name = ui.trainRouteName.value.trim();
+  const type = ui.trainRouteType.value;
+  const stationIds = [...trainRouteDraft.stationIds];
+
+  if (!name || stationIds.length === 0) {
+    alert("İsim ve en az bir istasyon seç.");
+    return;
+  }
+
+  state.trainRoutes.push({
+    id: makeId("trainroute"),
+    name,
+    type,
+    stationIds
+  });
+
+  saveAll();
+  closeTrainRouteCreate();
+  loadAll();
+
+  if (selectedItem && isTrainStationPlace(selectedItem)) {
+    detailsViewMode = "trainRoutes";
+    updateDetailsCard();
+  }
+}
+
+function updateJunctionBlockerButton(){
+  ui.junctionBlockerButton.classList.toggle("active", junctionBlockerMode);
+  ui.junctionBlockerButton.style.background = junctionBlockerMode ? "#111827" : "";
+  ui.junctionBlockerButton.style.color = junctionBlockerMode ? "white" : "";
+  map.getContainer().style.cursor = junctionBlockerMode ? "crosshair" : "";
+}
+
+function toggleJunctionBlockerMode(){
+  if (viewerMode) return;
+  if (routeState !== "idle") return;
+  if (trainRouteCreateMode) return;
+  junctionBlockerMode = !junctionBlockerMode;
+  if (!junctionBlockerMode) {
+    map.getContainer().style.cursor = "";
+  }
+  updateJunctionBlockerButton();
+}
+
+function loadAll(){
+  clearRenderedLayers();
+
+  roadObjects = [];
+  placeObjects = [];
+  boundaryObjects = [];
+  blockerObjects = [];
+  railwayObjects = [];
+
+  state.roads.forEach(r => renderRoad(r));
+  state.places.forEach(p => renderPlace(p));
+  state.boundaries.forEach(b => renderBoundary(b));
+  state.blockers.forEach(b => {
+    const ll = toLatLng(b.ll);
+    if (ll) renderBlocker(ll);
+  });
+
+  hideAllBoundaries();
+  updatePlaces();
+  updateArrowVisibility();
+  refreshSearchResults();
+  updateJunctionBlockerButton();
+  renderTrainRouteStationList();
+  updateTrainRouteDraftPanel();
+  refreshTrainRouteDraftMarkers();
+}
+
+function addPreviewForCurrentPoints(){
+  if (previewLayer) map.removeLayer(previewLayer);
+
+  if (mode === "road") {
+    previewLayer = L.polyline(points, { color: "#999", weight: 2, dashArray: "5,5" }).addTo(map);
+  }
+
+  if (mode === "boundary") {
+    if (points.length >= 3) {
+      previewLayer = L.polygon(points, { color: "#999", weight: 2, dashArray: "5,5", fill: false }).addTo(map);
+    } else if (points.length >= 2) {
+      previewLayer = L.polyline(points, { color: "#999", weight: 2, dashArray: "5,5" }).addTo(map);
+    }
+  }
+}
+
+ui.routeButton.addEventListener("click", startDirectionsForSelected);
+ui.stationRoutesButton.addEventListener("click", showStationTrainRoutes);
+ui.deleteButton.addEventListener("click", deleteSelectedItem);
+ui.routeConfirmButton.addEventListener("click", confirmRoutePoint);
+ui.routeCancelButton.addEventListener("click", clearRouteMode);
+ui.searchInput.addEventListener("input", refreshSearchResults);
+ui.localJsonDownloadBtn.addEventListener("click", downloadLocalJson);
+ui.localJsonLoadBtn.addEventListener("click", () => {
+  if (viewerMode) return;
+  ui.localJsonFile.value = "";
+  ui.localJsonFile.click();
+});
+ui.localJsonFile.addEventListener("change", async () => {
+  if (viewerMode) return;
+  const file = ui.localJsonFile.files && ui.localJsonFile.files[0];
+  if (!file) return;
+  try {
+    const fileText = await file.text();
+    const parsed = JSON.parse(fileText);
+    applyImportedState(parsed);
+    alert("JSON yüklendi.");
+  } catch (err) {
+    alert("JSON dosyası okunamadı.");
+  }
+});
+ui.trainRouteName.addEventListener("input", () => {
+  trainRouteDraft.name = ui.trainRouteName.value;
+  updateTrainRouteDraftPanel();
+});
+ui.trainRouteType.addEventListener("change", () => {
+  trainRouteDraft.type = ui.trainRouteType.value;
+  updateTrainRouteDraftPanel();
+});
+ui.trainRouteSaveButton.addEventListener("click", saveTrainRouteCreate);
+ui.trainRouteCancelButton.addEventListener("click", () => {
+  closeTrainRouteCreate();
+  if (selectedItem && isTrainStationPlace(selectedItem) && detailsViewMode === "trainRoutes") {
+    updateDetailsCard();
+  }
+});
+
+map.on("zoomend", () => {
+  updatePlaces();
+  updateArrowVisibility();
+});
+
+map.on("click", e => {
+  if (routeState === "pick_start") {
+    routeStart = L.latLng(e.latlng.lat, e.latlng.lng);
+    if (routeStartMarker) routeLayerGroup.removeLayer(routeStartMarker);
+    routeStartMarker = L.circleMarker(routeStart, {
+      radius: 6,
+      color: "#16a34a",
+      fillColor: "#22c55e",
+      fillOpacity: 1,
+      weight: 2
+    }).addTo(routeLayerGroup);
+    ui.routeStartBox.textContent = `Seçildi: ${routeStart.lat.toFixed(1)}, ${routeStart.lng.toFixed(1)}`;
+    ui.routeHint.textContent = "Artık işaretlediğim noktayı seçebilirsin.";
+    ui.routeConfirmButton.disabled = false;
+    routeState = "start_selected";
+    return;
+  }
+
+  if (viewerMode) return;
+  if (inspectMode) return;
+  if (trainRouteCreateMode) return;
+
+  if (junctionBlockerMode) {
+    const hit = findNearestBlockableJunction(e.latlng);
+    if (hit) addBlocker(hit.point);
+    return;
+  }
+
+  const name = document.getElementById("name").value.trim();
+  if (!name) return;
+
+  if (mode === "place") {
+    const type = document.getElementById("placeType").value;
+    addPlace(name, e.latlng, type);
+    updatePlaces();
+    refreshSearchResults();
+    return;
+  }
+
+  points.push(L.latLng(e.latlng.lat, e.latlng.lng));
+  addPreviewForCurrentPoints();
+});
+
+function finish(){
+  if (viewerMode) return;
+  if (trainRouteCreateMode) return;
+
+  const name = document.getElementById("name").value.trim();
+  if (!name) return;
+
+  if (mode === "road" && points.length >= 2) {
+    const type = document.getElementById("roadType").value;
+    const dir = document.getElementById("direction").value;
+    addRoad(name, points, type, dir);
+  }
+
+  if (mode === "boundary" && points.length >= 3) {
+    addBoundary(name, "mahalle", points);
+  }
+
+  points = [];
+  if (previewLayer) map.removeLayer(previewLayer);
+  previewLayer = null;
+  refreshSearchResults();
+}
+
+function undo(){
+  if (viewerMode) return;
+  if (trainRouteCreateMode) return;
+  points.pop();
+  addPreviewForCurrentPoints();
+}
+
+function clearAll(){
+  if (viewerMode) return;
+  const ok = confirm("Emin misin? Tüm kayıtlar silinecek.");
+  if (!ok) return;
+  localStorage.clear();
+  location.reload();
+}
+
+function deleteSelectedItem(){
+  if (!selectedItem || viewerMode) return;
+
+  const ok = confirm(`${selectedItem.name} silinsin mi?`);
+  if (!ok) return;
+
+  if (selectedItem.kind === "place") {
+    state.places = state.places.filter(p => p.id !== selectedItem.id);
+    state.trainRoutes = state.trainRoutes
+      .map(r => ({ ...r, stationIds: (r.stationIds || []).filter(id => id !== selectedItem.id) }))
+      .filter(r => (r.stationIds || []).length > 0);
+  } else if (selectedItem.kind === "road") {
+    state.roads = state.roads.filter(r => r.id !== selectedItem.id);
+  } else if (selectedItem.kind === "boundary") {
+    state.boundaries = state.boundaries.filter(b => b.id !== selectedItem.id);
+  }
+
+  saveAll();
+  clearRouteMode();
+  closeTrainRouteCreate();
+  clearSelectionStyles();
+  selectedItem = null;
+  detailsViewMode = "details";
+  ui.detailsPanel.classList.add("hidden");
+  loadAll();
+  refreshSearchResults();
+}
+
+const img = new Image();
+img.onload = function () {
+  const bounds = [[0, 0], [img.height, img.width]];
+  L.imageOverlay("https://i.imgur.com/tVoH7HG.png", bounds).addTo(map);
+  map.fitBounds(bounds);
+  map.once("moveend", () => {
+    loadAll();
+    requestAnimationFrame(() => {
+      updatePlaces();
+      updateArrowVisibility();
+      refreshLocalJsonBox();
+    });
+  });
+};
+img.src = "tVoH7HG.png";
+
+</script>
+</body>
+</html>
